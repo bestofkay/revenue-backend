@@ -1,0 +1,211 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Institutional revenue-agency palette */
+  --background: 210 33% 97%;
+  --foreground: 214 54% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 214 54% 12%;
+  --primary: 214 54% 12%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 28% 94%;
+  --secondary-foreground: 214 54% 12%;
+  --muted: 210 22% 93%;
+  --muted-foreground: 214 16% 38%;
+  --destructive: 0 68% 42%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 22% 86%;
+  --input: 214 22% 86%;
+  --ring: 158 72% 28%;
+  --radius: 0.55rem;
+
+  --brand-navy: #081a30;
+  --brand-navy-deep: #04101f;
+  --brand-green: #0c6b45;
+  --brand-brass: #b89a4f;
+  --brand-brass-soft: #d4bc78;
+  --surface-tint: linear-gradient(165deg, #f6f8fb 0%, #eef3f8 42%, #e4ecf4 100%);
+  --mesh-green: rgba(12, 107, 69, 0.09);
+  --mesh-navy: rgba(8, 26, 48, 0.12);
+}
+
+.dark {
+  --background: 214 54% 7%;
+  --foreground: 210 28% 96%;
+  --card: 214 48% 10%;
+  --card-foreground: 210 28% 96%;
+  --primary: 158 55% 38%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 214 36% 15%;
+  --secondary-foreground: 210 28% 96%;
+  --muted: 214 32% 14%;
+  --muted-foreground: 210 14% 68%;
+  --destructive: 0 62% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 28% 18%;
+  --input: 214 28% 18%;
+  --ring: 158 55% 38%;
+  --surface-tint: linear-gradient(165deg, #040b16 0%, #081a30 50%, #0a241c 100%);
+  --mesh-green: rgba(12, 107, 69, 0.16);
+  --mesh-navy: rgba(8, 26, 48, 0.4);
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    overflow-x: clip;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    background-color: hsl(var(--background));
+    background-image:
+      radial-gradient(ellipse 80% 50% at 0% -10%, var(--mesh-green), transparent 55%),
+      radial-gradient(ellipse 60% 40% at 100% 0%, var(--mesh-navy), transparent 50%),
+      var(--surface-tint);
+    background-attachment: fixed;
+    min-height: 100vh;
+    overflow-x: clip;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-serif tracking-tight;
+  }
+
+  ::selection {
+    background: rgba(12, 107, 69, 0.22);
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.45s ease both;
+  }
+
+  .animate-scale-in {
+    animation: scale-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+
+  .seal-ring {
+    box-shadow:
+      0 0 0 1px rgba(184, 154, 79, 0.35),
+      0 0 0 4px rgba(8, 26, 48, 0.08);
+  }
+
+  .hairline-top {
+    box-shadow: inset 0 1px 0 rgba(184, 154, 79, 0.45);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--card)) 50%, hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s ease infinite;
+}
+
+/* Industry-standard printable revenue reports */
+@media print {
+  @page {
+    size: A4;
+    margin: 12mm 14mm;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    color: #0a1628 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
+  a[href]::after {
+    content: none !important;
+  }
+
+  .print\\:hidden {
+    display: none !important;
+  }
+
+  .print\\:block {
+    display: block !important;
+  }
+
+  /* Prefer page breaks between major report sections */
+  .report-print-root section {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-print-root table {
+    break-inside: auto;
+  }
+
+  .report-print-root tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .report-print-root .recharts-wrapper,
+  .report-print-root .recharts-surface {
+    max-width: 100% !important;
+  }
+
+  /* Expand tab-hidden sections when printing (Tailwind print:block backup) */
+  .report-print-root section.hidden {
+    display: block !important;
+  }
+}

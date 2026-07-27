@@ -1,0 +1,6 @@
+# RabbitMQ for Render private service (persistent disk at /var/lib/rabbitmq)
+FROM rabbitmq:3.13-management-alpine
+
+ENV RABBITMQ_DEFAULT_USER=revenue
+
+EXPOSE 5672 15672

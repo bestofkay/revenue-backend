@@ -1,0 +1,108 @@
+﻿services:
+  mysql:
+    image: mysql:8.0
+    container_name: revenue-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: revenue
+      MYSQL_DATABASE: revenue
+      MYSQL_USER: revenue
+      MYSQL_PASSWORD: revenue
+    ports:
+      # Host 3306/3307 often taken by local MySQL installs; use 3316
+      - "3316:3306"
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - revenue_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-urevenue", "-prevenue"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: revenue-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: revenue-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: revenue
+      RABBITMQ_DEFAULT_PASS: revenue
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: revenue-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  api:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: revenue-api
+    env_file:
+      - ../../.env
+    environment:
+      DATABASE_URL: mysql://revenue:revenue@mysql:3306/revenue
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://revenue:revenue@rabbitmq:5672
+      API_URL: http://localhost:4000
+      APP_URL: http://localhost:3000
+      PAY_URL: http://localhost:3001
+      TENANT_AGENCY_CODE: NCS
+    ports:
+      - "4000:4000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.web
+    container_name: revenue-web
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  pay:
+    build:
+      context: ../..
+      dockerfile: infra/docker/Dockerfile.pay
+    container_name: revenue-pay
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+
+volumes:
+  revenue_mysql:

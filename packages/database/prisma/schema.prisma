@@ -1,0 +1,979 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  LOCKED
+  PENDING
+}
+
+enum AgencyStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum AssessmentStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+  CANCELLED
+  INVOICED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  CANCELLED
+  EXPIRED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  EXPIRED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum VirtualAccountStatus {
+  ACTIVE
+  EXPIRED
+  CLOSED
+  SETTLED
+}
+
+enum SettlementStatus {
+  PENDING
+  PROCESSING
+  SETTLED
+  FAILED
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  DEBIT_CARD
+  USSD
+  QR
+  POS
+  WALLET
+  MOBILE_MONEY
+  INTERNATIONAL
+}
+
+enum PaymentProvider {
+  PAYSTACK
+  FLUTTERWAVE
+  REMITA
+  INTERNAL
+}
+
+enum NotificationChannel {
+  SMS
+  EMAIL
+  PUSH
+  WHATSAPP
+  TELEGRAM
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+}
+
+enum LinkEventType {
+  OPENED
+  CLICKED
+  PAID
+  EXPIRED
+  SHARED
+}
+
+enum ApprovalAction {
+  SUBMIT
+  APPROVE
+  REJECT
+  RETURN
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+  PAYMENT
+  REFUND
+  CONFIG
+  ROLE_CHANGE
+  RECEIPT
+  ASSESSMENT
+  INVOICE
+}
+
+model Agency {
+  id              String       @id @default(cuid())
+  code            String       @unique
+  name            String
+  shortName       String?
+  status          AgencyStatus @default(ACTIVE)
+  email           String?
+  phone           String?
+  website         String?
+  logoUrl         String?
+  address         String?
+  state           String?
+  country         String       @default("NG")
+  defaultCurrency String       @default("NGN")
+  paymentCodeStyle String      @default("AGENCY_DATE_SEQ")
+  hmacSecretEnc   String?
+  metadata        Json?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  branches          Branch[]
+  users             User[]
+  roles             Role[]
+  revenueCategories RevenueCategory[]
+  revenueTypes      RevenueType[]
+  taxTypes          TaxType[]
+  assessments       Assessment[]
+  invoices          Invoice[]
+  paymentRequests   PaymentRequest[]
+  virtualAccounts   VirtualAccount[]
+  payments          Payment[]
+  receipts          Receipt[]
+  settlements       Settlement[]
+  settlementBatches SettlementBatch[]
+  ledgerEntries     LedgerEntry[]
+  gatewayConfigs    GatewayConfig[]
+  tsaMappings       TsaMapping[]
+  apiKeys           ApiKey[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+  sequences         SequenceCounter[]
+  approvalWorkflows ApprovalWorkflow[]
+  officerProfiles   OfficerProfile[]
+  files             FileObject[]
+
+  @@index([status])
+}
+
+model Branch {
+  id        String   @id @default(cuid())
+  agencyId  String
+  code      String
+  name      String
+  address   String?
+  state     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  agency          Agency           @relation(fields: [agencyId], references: [id])
+  officerProfiles OfficerProfile[]
+  assessments     Assessment[]
+  invoices        Invoice[]
+
+  @@unique([agencyId, code])
+}
+
+model User {
+  id             String     @id @default(cuid())
+  agencyId       String?
+  email          String     @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  phone          String?
+  status         UserStatus @default(PENDING)
+  isSuperAdmin   Boolean    @default(false)
+  emailVerifiedAt DateTime?
+  lastLoginAt    DateTime?
+  failedLogins   Int        @default(0)
+  lockedUntil    DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  agency            Agency?           @relation(fields: [agencyId], references: [id])
+  roles             UserRole[]
+  sessions          Session[]
+  refreshTokens     RefreshToken[]
+  twoFactor         TwoFactorSecret?
+  officerProfile    OfficerProfile?
+  apiKeys           ApiKey[]
+  assessmentsCreated Assessment[]     @relation("AssessmentCreator")
+  approvalActions   ApprovalActionLog[]
+  auditLogs         AuditLog[]
+  notifications     Notification[]
+
+  @@index([agencyId])
+  @@index([status])
+}
+
+model OfficerProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  agencyId   String
+  branchId   String?
+  employeeNo String?
+  title      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id])
+  agency Agency  @relation(fields: [agencyId], references: [id])
+  branch Branch? @relation(fields: [branchId], references: [id])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  agencyId    String?
+  code        String
+  name        String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  agency      Agency?          @relation(fields: [agencyId], references: [id])
+  permissions RolePermission[]
+  users       UserRole[]
+
+  @@unique([agencyId, code])
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?
+  module      String
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model UserRole {
+  userId     String
+  roleId     String
+  assignedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  userId     String
+  ipAddress  String?
+  userAgent  String?
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model TwoFactorSecret {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  secretEnc   String   @db.Text
+  enabled     Boolean  @default(false)
+  verifiedAt  DateTime?
+  backupCodes Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  agencyId   String
+  userId     String?
+  name       String
+  keyPrefix  String
+  keyHash    String    @unique
+  scopes     Json
+  expiresAt  DateTime?
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  agency Agency @relation(fields: [agencyId], references: [id])
+  user   User?  @relation(fields: [userId], references: [id])
+
+  @@index([agencyId])
+}
+
+model Currency {
+  code      String   @id
+  name      String
+  symbol    String
+  decimals  Int      @default(2)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model RevenueCategory {
+  id          String   @id @default(cuid())
+  agencyId    String
+  code        String
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  agency       Agency        @relation(fields: [agencyId], references: [id])
+  revenueTypes RevenueType[]
+
+  @@unique([agencyId, code])
+}
+
+model RevenueType {
+  id          String   @id @default(cuid())
+  agencyId    String
+  categoryId  String
+  code        String
+  name        String
+  description String?
+  glCode      String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  agency      Agency           @relation(fields: [agencyId], references: [id])
+  category    RevenueCategory  @relation(fields: [categoryId], references: [id])
+  feeSchedules FeeSchedule[]
+  assessmentLines AssessmentLine[]
+  invoiceLines InvoiceLine[]
+
+  @@unique([agencyId, code])
+  @@index([categoryId])
+}
+
+model TaxType {
+  id          String   @id @default(cuid())
+  agencyId    String
+  code        String
+  name        String
+  description String?
+  /// Percentage applied to the revenue line base amount (e.g. 7.5 = 7.5%)
+  ratePercent Decimal  @db.Decimal(7, 4)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  agency          Agency           @relation(fields: [agencyId], references: [id])
+  assessmentLines AssessmentLine[]
+  invoiceLines    InvoiceLine[]
+
+  @@unique([agencyId, code])
+  @@index([agencyId, isActive])
+}
+
+model FeeSchedule {
+  id            String    @id @default(cuid())
+  revenueTypeId String
+  name          String
+  amountMinor   Int
+  currency      String    @default("NGN")
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  revenueType RevenueType @relation(fields: [revenueTypeId], references: [id])
+
+  @@index([revenueTypeId, isActive])
+}
+
+model ApprovalWorkflow {
+  id         String   @id @default(cuid())
+  agencyId   String
+  name       String
+  entityType String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  agency Agency         @relation(fields: [agencyId], references: [id])
+  steps  ApprovalStep[]
+
+  @@index([agencyId, entityType])
+}
+
+model ApprovalStep {
+  id         String @id @default(cuid())
+  workflowId String
+  stepOrder  Int
+  name       String
+  roleCode   String
+  minApprovers Int  @default(1)
+
+  workflow ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, stepOrder])
+}
+
+model Assessment {
+  id              String           @id @default(cuid())
+  agencyId        String
+  branchId        String?
+  createdById     String
+  assessmentNumber String
+  payerName       String
+  payerEmail      String?
+  payerPhone      String?
+  payerTin        String?
+  currency        String           @default("NGN")
+  subtotalMinor   Int
+  taxMinor        Int              @default(0)
+  totalMinor      Int
+  status          AssessmentStatus @default(DRAFT)
+  notes           String?
+  currentStep     Int              @default(0)
+  approvedAt      DateTime?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  metadata        Json?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  agency      Agency             @relation(fields: [agencyId], references: [id])
+  branch      Branch?            @relation(fields: [branchId], references: [id])
+  createdBy   User               @relation("AssessmentCreator", fields: [createdById], references: [id])
+  lines       AssessmentLine[]
+  approvals   ApprovalActionLog[]
+  invoices    Invoice[]
+
+  @@unique([agencyId, assessmentNumber])
+  @@index([agencyId, status])
+  @@index([createdById])
+}
+
+model AssessmentLine {
+  id              String  @id @default(cuid())
+  assessmentId    String
+  revenueTypeId   String
+  taxTypeId       String?
+  description     String
+  quantity        Decimal @db.Decimal(18, 4)
+  unitAmountMinor Int
+  /// Snapshot of tax rate (%) at assessment time
+  taxRatePercent  Decimal @default(0) @db.Decimal(7, 4)
+  taxMinor        Int     @default(0)
+  lineTotalMinor  Int
+
+  assessment  Assessment  @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  revenueType RevenueType @relation(fields: [revenueTypeId], references: [id])
+  taxType     TaxType?    @relation(fields: [taxTypeId], references: [id])
+
+  @@index([assessmentId])
+  @@index([taxTypeId])
+}
+
+model ApprovalActionLog {
+  id           String         @id @default(cuid())
+  assessmentId String
+  actorId      String
+  action       ApprovalAction
+  stepOrder    Int
+  comments     String?
+  createdAt    DateTime       @default(now())
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  actor      User       @relation(fields: [actorId], references: [id])
+
+  @@index([assessmentId])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  agencyId      String
+  branchId      String?
+  assessmentId  String?
+  invoiceNumber String
+  payerName     String
+  payerEmail    String?
+  payerPhone    String?
+  payerTin      String?
+  currency      String        @default("NGN")
+  subtotalMinor Int
+  taxMinor      Int           @default(0)
+  totalMinor    Int
+  amountPaidMinor Int         @default(0)
+  status        InvoiceStatus @default(DRAFT)
+  issuedAt      DateTime?
+  dueAt         DateTime?
+  paidAt        DateTime?
+  expiredAt     DateTime?
+  notes         String?
+  metadata      Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  agency          Agency           @relation(fields: [agencyId], references: [id])
+  branch          Branch?          @relation(fields: [branchId], references: [id])
+  assessment      Assessment?      @relation(fields: [assessmentId], references: [id])
+  lines           InvoiceLine[]
+  paymentRequests PaymentRequest[]
+  payments        Payment[]
+  receipts        Receipt[]
+
+  @@unique([agencyId, invoiceNumber])
+  @@index([agencyId, status])
+  @@index([assessmentId])
+}
+
+model InvoiceLine {
+  id              String  @id @default(cuid())
+  invoiceId       String
+  revenueTypeId   String
+  taxTypeId       String?
+  description     String
+  quantity        Decimal @db.Decimal(18, 4)
+  unitAmountMinor Int
+  /// Snapshot of tax rate (%) at invoice time
+  taxRatePercent  Decimal @default(0) @db.Decimal(7, 4)
+  taxMinor        Int     @default(0)
+  lineTotalMinor  Int
+
+  invoice     Invoice     @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  revenueType RevenueType @relation(fields: [revenueTypeId], references: [id])
+  taxType     TaxType?    @relation(fields: [taxTypeId], references: [id])
+
+  @@index([invoiceId])
+  @@index([taxTypeId])
+}
+
+model PaymentRequest {
+  id              String        @id @default(cuid())
+  agencyId        String
+  invoiceId       String
+  paymentCode     String        @unique
+  paymentReference String       @unique
+  amountMinor     Int
+  currency        String        @default("NGN")
+  status          PaymentStatus @default(PENDING)
+  hmacToken       String        @db.Text
+  qrPayload       String        @db.LongText
+  payUrl          String        @db.VarChar(500)
+  expiresAt       DateTime
+  paidAt          DateTime?
+  provider        PaymentProvider @default(PAYSTACK)
+  preferredMethods Json?
+  metadata        Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  agency         Agency          @relation(fields: [agencyId], references: [id])
+  invoice        Invoice         @relation(fields: [invoiceId], references: [id])
+  paymentLink    PaymentLink?
+  virtualAccount VirtualAccount?
+  payments       Payment[]
+  linkEvents     LinkShareEvent[]
+  paymentAttempts PaymentAttempt[]
+
+  @@index([agencyId, status])
+  @@index([expiresAt])
+  @@index([invoiceId])
+}
+
+model PaymentLink {
+  id               String   @id @default(cuid())
+  paymentRequestId String   @unique
+  slug             String   @unique
+  shortUrl         String
+  openCount        Int      @default(0)
+  clickCount       Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  paymentRequest PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+}
+
+model VirtualAccount {
+  id               String               @id @default(cuid())
+  agencyId         String
+  paymentRequestId String               @unique
+  provider         PaymentProvider
+  bankCode         String
+  bankName         String
+  accountNumber    String
+  accountName      String
+  invoiceNumber    String
+  currency         String               @default("NGN")
+  status           VirtualAccountStatus @default(ACTIVE)
+  settlementStatus SettlementStatus     @default(PENDING)
+  expiresAt        DateTime
+  providerRef      String?
+  metadata         Json?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  agency         Agency         @relation(fields: [agencyId], references: [id])
+  paymentRequest PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([accountNumber, bankCode])
+  @@index([agencyId, status])
+  @@index([expiresAt])
+}
+
+model Bank {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  nipCode   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model GatewayConfig {
+  id           String          @id @default(cuid())
+  agencyId     String
+  provider     PaymentProvider
+  isActive     Boolean         @default(true)
+  isDefault    Boolean         @default(false)
+  publicKey    String?         @db.Text
+  secretKeyEnc String          @db.Text
+  webhookSecretEnc String?     @db.Text
+  metadata     Json?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  agency Agency @relation(fields: [agencyId], references: [id])
+
+  @@unique([agencyId, provider])
+}
+
+model Payment {
+  id               String          @id @default(cuid())
+  agencyId         String
+  invoiceId        String
+  paymentRequestId String
+  amountMinor      Int
+  currency         String          @default("NGN")
+  method           PaymentMethod
+  provider         PaymentProvider
+  providerRef      String?
+  status           PaymentStatus   @default(PENDING)
+  paidAt           DateTime?
+  failureReason    String?
+  payerName        String?
+  payerEmail       String?
+  rawPayload       Json?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  agency         Agency         @relation(fields: [agencyId], references: [id])
+  invoice        Invoice        @relation(fields: [invoiceId], references: [id])
+  paymentRequest PaymentRequest @relation(fields: [paymentRequestId], references: [id])
+  receipt        Receipt?
+  refunds        Refund[]
+  settlement     Settlement?
+  ledgerEntries  LedgerEntry[]
+
+  @@unique([provider, providerRef])
+  @@index([agencyId, status])
+  @@index([paymentRequestId])
+  @@index([invoiceId])
+}
+
+model PaymentAttempt {
+  id               String          @id @default(cuid())
+  paymentRequestId String
+  method           PaymentMethod
+  provider         PaymentProvider
+  status           PaymentStatus   @default(PENDING)
+  providerRef      String?
+  errorMessage     String?
+  createdAt        DateTime        @default(now())
+
+  paymentRequest PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+
+  @@index([paymentRequestId])
+}
+
+model WebhookEvent {
+  id              String          @id @default(cuid())
+  provider        PaymentProvider
+  providerEventId String
+  eventType       String
+  signatureValid  Boolean
+  payload         Json
+  processedAt     DateTime?
+  processingError String?
+  createdAt       DateTime        @default(now())
+
+  @@unique([provider, providerEventId])
+  @@index([createdAt])
+}
+
+model Refund {
+  id          String        @id @default(cuid())
+  paymentId   String
+  amountMinor Int
+  currency    String        @default("NGN")
+  reason      String?
+  status      PaymentStatus @default(PENDING)
+  providerRef String?
+  processedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@index([paymentId])
+}
+
+model Receipt {
+  id              String   @id @default(cuid())
+  agencyId        String
+  paymentId       String   @unique
+  invoiceId       String
+  receiptNumber   String
+  amountMinor     Int
+  currency        String   @default("NGN")
+  paymentReference String
+  invoiceNumber   String
+  agencyName      String
+  officerName     String?
+  qrVerification  String   @db.LongText
+  digitalSignature String  @db.Text
+  issuedAt        DateTime @default(now())
+  metadata        Json?
+  createdAt       DateTime @default(now())
+
+  agency  Agency  @relation(fields: [agencyId], references: [id])
+  payment Payment @relation(fields: [paymentId], references: [id])
+  invoice Invoice @relation(fields: [invoiceId], references: [id])
+
+  @@unique([agencyId, receiptNumber])
+  @@index([invoiceId])
+}
+
+model SettlementBatch {
+  id           String           @id @default(cuid())
+  agencyId     String
+  batchNumber  String
+  totalMinor   Int
+  currency     String           @default("NGN")
+  status       SettlementStatus @default(PENDING)
+  tsaReference String?
+  settledAt    DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  agency      Agency       @relation(fields: [agencyId], references: [id])
+  settlements Settlement[]
+
+  @@unique([agencyId, batchNumber])
+}
+
+model Settlement {
+  id          String           @id @default(cuid())
+  agencyId    String
+  paymentId   String           @unique
+  batchId     String?
+  amountMinor Int
+  currency    String           @default("NGN")
+  status      SettlementStatus @default(PENDING)
+  tsaAccount  String?
+  settledAt   DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  agency  Agency           @relation(fields: [agencyId], references: [id])
+  payment Payment          @relation(fields: [paymentId], references: [id])
+  batch   SettlementBatch? @relation(fields: [batchId], references: [id])
+
+  @@index([agencyId, status])
+}
+
+model TsaMapping {
+  id              String   @id @default(cuid())
+  agencyId        String
+  revenueTypeCode String?
+  tsaAccountNumber String
+  tsaAccountName  String
+  bankCode        String?
+  isDefault       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  agency Agency @relation(fields: [agencyId], references: [id])
+
+  @@index([agencyId])
+}
+
+model LedgerEntry {
+  id          String          @id @default(cuid())
+  agencyId    String
+  paymentId   String?
+  entryType   LedgerEntryType
+  accountCode String
+  amountMinor Int
+  currency    String          @default("NGN")
+  narrative   String
+  valueDate   DateTime        @default(now())
+  createdAt   DateTime        @default(now())
+
+  agency  Agency   @relation(fields: [agencyId], references: [id])
+  payment Payment? @relation(fields: [paymentId], references: [id])
+
+  @@index([agencyId, valueDate])
+  @@index([paymentId])
+}
+
+model Notification {
+  id        String              @id @default(cuid())
+  agencyId  String?
+  userId    String?
+  channel   NotificationChannel
+  recipient String
+  subject   String?
+  body      String   @db.Text
+  status    NotificationStatus  @default(QUEUED)
+  metadata  Json?
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  agency     Agency?                @relation(fields: [agencyId], references: [id])
+  user       User?                  @relation(fields: [userId], references: [id])
+  deliveries NotificationDelivery[]
+
+  @@index([status])
+  @@index([agencyId])
+}
+
+model NotificationDelivery {
+  id             String             @id @default(cuid())
+  notificationId String
+  status         NotificationStatus
+  providerRef    String?
+  errorMessage   String?
+  attemptedAt    DateTime           @default(now())
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([notificationId])
+}
+
+model LinkShareEvent {
+  id               String        @id @default(cuid())
+  paymentRequestId String
+  eventType        LinkEventType
+  channel          NotificationChannel?
+  ipAddress        String?
+  userAgent        String?
+  metadata         Json?
+  createdAt        DateTime      @default(now())
+
+  paymentRequest PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+
+  @@index([paymentRequestId, eventType])
+}
+
+model FileObject {
+  id           String   @id @default(cuid())
+  agencyId     String?
+  filename     String
+  mimeType     String
+  sizeBytes    Int
+  storageKey   String
+  checksumSha256 String
+  createdAt    DateTime @default(now())
+
+  agency Agency? @relation(fields: [agencyId], references: [id])
+
+  @@index([agencyId])
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  agencyId   String?
+  actorId    String?
+  action     AuditAction
+  entityType String
+  entityId   String?
+  ipAddress  String?
+  userAgent  String?
+  before     Json?
+  after      Json?
+  metadata   Json?
+  createdAt  DateTime    @default(now())
+
+  agency Agency? @relation(fields: [agencyId], references: [id])
+  actor  User?   @relation(fields: [actorId], references: [id])
+
+  @@index([agencyId, createdAt])
+  @@index([entityType, entityId])
+  @@index([actorId])
+}
+
+model SequenceCounter {
+  id        String @id @default(cuid())
+  agencyId  String
+  name      String
+  year      Int
+  month     Int    @default(0)
+  value     Int    @default(0)
+
+  agency Agency @relation(fields: [agencyId], references: [id])
+
+  @@unique([agencyId, name, year, month])
+}
