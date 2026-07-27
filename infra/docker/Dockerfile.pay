@@ -3,17 +3,30 @@ FROM node:20-bookworm-slim AS base
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 WORKDIR /app
 
-FROM base AS build
+FROM base AS deps
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json ./
+COPY apps/api/package.json ./apps/api/package.json
+COPY apps/web/package.json ./apps/web/package.json
+COPY apps/pay/package.json ./apps/pay/package.json
+COPY packages/shared/package.json ./packages/shared/package.json
+COPY packages/config/package.json ./packages/config/package.json
+COPY packages/database/package.json ./packages/database/package.json
+COPY tests/package.json ./tests/package.json
 COPY apps/pay ./apps/pay
-RUN pnpm install --frozen-lockfile || pnpm install
+RUN pnpm install --frozen-lockfile --filter @revenue/pay... || pnpm install --filter @revenue/pay...
+
+FROM deps AS build
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN pnpm --filter @revenue/pay build
 
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-ENV PORT=3001
-COPY --from=build /app/apps/pay ./apps/pay
-COPY --from=build /app/node_modules ./node_modules
-EXPOSE 3001
-CMD ["pnpm", "--filter", "@revenue/pay", "start"]
+ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+COPY --from=build /app/apps/pay/public ./apps/pay/public
+COPY --from=build /app/apps/pay/.next/standalone ./
+COPY --from=build /app/apps/pay/.next/static ./apps/pay/.next/static
+EXPOSE 3000
+CMD ["node", "apps/pay/server.js"]

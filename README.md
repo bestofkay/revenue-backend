@@ -75,3 +75,5 @@ Seed populates **all tables** with realistic NCS mock data (branches, assessment
 ## Docs
 
 See [`docs/`](docs/) for architecture, ERD, sequences, API, deployment, developer, admin, and user guides.
+
+**Railway (production):** [`docs/railway.md`](docs/railway.md) — deploy API, admin, pay, MySQL, Redis, and RabbitMQ from this repo.

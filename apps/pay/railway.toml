@@ -1,0 +1,19 @@
+# Railway Config as Code — Pay portal (Next.js)
+# In Railway: Settings → Config-as-code path → /apps/pay/railway.toml
+# Keep Root Directory at repo root (/).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infra/docker/Dockerfile.pay"
+watchPatterns = [
+  "apps/pay/**",
+  "infra/docker/Dockerfile.pay",
+  "pnpm-lock.yaml",
+  "package.json"
+]
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

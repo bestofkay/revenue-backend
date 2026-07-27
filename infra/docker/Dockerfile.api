@@ -10,6 +10,9 @@ FROM base AS deps
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml* turbo.json tsconfig.base.json ./
 COPY packages ./packages
 COPY apps/api ./apps/api
+COPY apps/web/package.json ./apps/web/package.json
+COPY apps/pay/package.json ./apps/pay/package.json
+COPY tests/package.json ./tests/package.json
 RUN pnpm install --frozen-lockfile || pnpm install
 
 FROM deps AS build
@@ -22,8 +25,10 @@ RUN pnpm --filter @revenue/shared build \
 FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PORT=4000
 COPY --from=build /app /app
 COPY infra/docker/api-entrypoint.sh /app/infra/docker/api-entrypoint.sh
-RUN chmod +x /app/infra/docker/api-entrypoint.sh
+RUN chmod +x /app/infra/docker/api-entrypoint.sh \
+  && sed -i 's/\r$//' /app/infra/docker/api-entrypoint.sh
 EXPOSE 4000
 CMD ["/app/infra/docker/api-entrypoint.sh"]

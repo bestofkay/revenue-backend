@@ -1,0 +1,19 @@
+# Railway Config as Code — Admin web (Next.js)
+# In Railway: Settings → Config-as-code path → /apps/web/railway.toml
+# Keep Root Directory at repo root (/).
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "infra/docker/Dockerfile.web"
+watchPatterns = [
+  "apps/web/**",
+  "infra/docker/Dockerfile.web",
+  "pnpm-lock.yaml",
+  "package.json"
+]
+
+[deploy]
+healthcheckPath = "/"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

@@ -76,6 +76,12 @@ Update `APP_URL` / `PAY_URL` / `CORS_ORIGINS` on `revenue-api` after Netlify sit
 - Private MySQL/RabbitMQ + disks are always-on paid resources.
 - Keep Redis `ipAllowList: []` so it stays private.
 
+## Railway (full stack)
+
+Preferred all-in-one host for this monorepo (API + web + pay + MySQL + Redis + RabbitMQ).
+
+See **[`docs/railway.md`](./railway.md)** and **[`.env.railway.example`](../.env.railway.example)**.
+
 ## Kubernetes (Helm)
 
 ```bash
