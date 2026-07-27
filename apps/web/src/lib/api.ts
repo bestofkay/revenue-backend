@@ -1,4 +1,5 @@
 import { clearSession, getAccessToken, getRefreshToken, setSession } from './auth';
+import { isPublicPath } from './public-paths';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api/v1';
 
@@ -55,15 +56,19 @@ function parseErrorMessage(data: unknown, status: number): string {
   return `Request failed (${status})`;
 }
 
+function redirectToLogin() {
+  if (typeof window === 'undefined') return;
+  if (isPublicPath(window.location.pathname)) return;
+  window.location.href = '/login';
+}
+
 export async function api<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, auth = true, headers, _retried, ...rest } = options;
   const token = getAccessToken();
 
   if (auth && !token && typeof window !== 'undefined') {
     clearSession();
-    if (!window.location.pathname.startsWith('/login')) {
-      window.location.href = '/login';
-    }
+    redirectToLogin();
     throw new ApiError('Not authenticated', 401);
   }
 
@@ -88,9 +93,7 @@ export async function api<T = unknown>(path: string, options: RequestOptions = {
       return api<T>(path, { ...options, _retried: true });
     }
     clearSession();
-    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
-      window.location.href = '/login';
-    }
+    redirectToLogin();
   }
 
   const text = await res.text();

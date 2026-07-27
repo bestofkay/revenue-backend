@@ -55,7 +55,9 @@ pnpm --filter @revenue/pay dev
 
 - Swagger: http://localhost:4000/docs  
 - Admin: http://localhost:3000  
-- Pay: http://localhost:3001  
+- Pay (public, no login): http://localhost:3000/pay  
+
+`apps/pay` is deprecated; the pay portal is part of `@revenue/web`.
 
 ## Seed users (password `ChangeMe@12345`)
 

@@ -3,7 +3,7 @@ name: start-project
 description: >-
   Starts the Government Revenue platform locally: Docker (MySQL/Redis/RabbitMQ/Mailhog),
   installs deps if needed, builds shared packages, runs Prisma migrate deploy, seeds the DB,
-  and starts API/web/pay apps. Use when the user asks to start the project, boot the apps,
+  and starts API and web apps (pay portal is served at /pay on web). Use when the user asks to start the project, boot the apps,
   run migrations, seed the database, or bring the stack up for local testing.
 ---
 
@@ -54,17 +54,16 @@ Always run commands from the repo root: `c:\Projects\revenue` (or the workspace 
    ```powershell
    pnpm --filter @revenue/api dev
    pnpm --filter @revenue/web dev
-   pnpm --filter @revenue/pay dev
    ```
    - Use `block_until_ms: 0` (or equivalent) so each starts in the background
-   - Confirm they are listening before finishing (API ~4000, web ~3000, pay ~3001)
+   - Confirm they are listening before finishing (API ~4000, web ~3000)
    - If a port is already in use, report which process/port and ask before killing
 
 7. **Final report to user** (always include)
    | Surface | URL |
    |---------|-----|
    | Admin | http://localhost:3000 |
-   | Pay portal | http://localhost:3001 |
+   | Pay portal | http://localhost:3000/pay |
    | API Swagger | http://localhost:4000/docs |
    | Mailhog | http://localhost:8025 |
 
@@ -74,7 +73,7 @@ Always run commands from the repo root: `c:\Projects\revenue` (or the workspace 
 
 ## Optional helper script
 
-If `scripts/start-dev.ps1` exists, you may run it for steps 2â€“5, then still start the three apps in background as in step 6:
+If `scripts/start-dev.ps1` exists, you may run it for steps 2–5, then still start the API and web apps in background as in step 6:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/start-dev.ps1

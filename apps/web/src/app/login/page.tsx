@@ -184,9 +184,12 @@ export default function LoginPage() {
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {needs2fa ? 'Verify & sign in' : 'Sign in securely'}
               </Button>
-              <p className="text-center text-sm">
+              <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-sm">
                 <a className="text-accent underline-offset-2 hover:underline" href="/forgot-password">
                   Forgot password?
+                </a>
+                <a className="text-navy/60 underline-offset-2 hover:underline" href="/pay">
+                  Public pay portal
                 </a>
               </p>
             </form>
