@@ -17,8 +17,8 @@ export class ReportingService {
     private readonly abac: AbacService,
   ) {}
 
-  private agencyFilter(actor: AuthUser, agencyId?: string) {
-    return this.abac.resolveAgencyId(actor, agencyId);
+  private async agencyFilter(actor: AuthUser, agencyId?: string) {
+    return this.abac.resolveAgencyIdAsync(actor, agencyId);
   }
 
   private range(period: string, anchor = new Date()) {
@@ -79,7 +79,7 @@ export class ReportingService {
   }
 
   async resolveAgencyMeta(actor: AuthUser, agencyId?: string) {
-    const resolved = this.agencyFilter(actor, agencyId);
+    const resolved = await this.agencyFilter(actor, agencyId);
     const agency = await this.prisma.agency.findUnique({
       where: { id: resolved },
       select: { id: true, code: true, name: true, shortName: true, defaultCurrency: true },
@@ -157,7 +157,7 @@ export class ReportingService {
   }
 
   async dashboard(actor: AuthUser, agencyId?: string) {
-    const resolved = this.agencyFilter(actor, agencyId);
+    const resolved = await this.agencyFilter(actor, agencyId);
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const monthStart = new Date();
@@ -267,7 +267,7 @@ export class ReportingService {
   }
 
   async periodReport(actor: AuthUser, period: string, agencyId?: string) {
-    const resolved = this.agencyFilter(actor, agencyId);
+    const resolved = await this.agencyFilter(actor, agencyId);
     const { start, end } = this.range(period);
     const payments = await this.prisma.payment.findMany({
       where: {
@@ -291,7 +291,7 @@ export class ReportingService {
 
   /** Full industry-style collection performance pack for the reports console. */
   async collectionReport(actor: AuthUser, period: string, agencyId?: string) {
-    const resolved = this.agencyFilter(actor, agencyId);
+    const resolved = await this.agencyFilter(actor, agencyId);
     const { start, end } = this.range(period);
     const prior = this.priorRange(period, start, end);
 
@@ -1202,7 +1202,7 @@ export class ReportingService {
 
 
   async byRevenueType(actor: AuthUser, agencyId?: string) {
-    const resolved = this.agencyFilter(actor, agencyId);
+    const resolved = await this.agencyFilter(actor, agencyId);
     const grouped = await this.prisma.invoiceLine.groupBy({
       by: ['revenueTypeId'],
       where: { invoice: { agencyId: resolved, status: InvoiceStatus.PAID } },
@@ -1222,7 +1222,7 @@ export class ReportingService {
   }
 
   async byOfficer(actor: AuthUser, agencyId?: string) {
-    const resolved = this.agencyFilter(actor, agencyId);
+    const resolved = await this.agencyFilter(actor, agencyId);
     const grouped = await this.prisma.assessment.groupBy({
       by: ['createdById'],
       where: { agencyId: resolved },
@@ -1244,7 +1244,7 @@ export class ReportingService {
   }
 
   async byBranch(actor: AuthUser, agencyId?: string) {
-    const resolved = this.agencyFilter(actor, agencyId);
+    const resolved = await this.agencyFilter(actor, agencyId);
     const grouped = await this.prisma.invoice.groupBy({
       by: ['branchId'],
       where: { agencyId: resolved, status: InvoiceStatus.PAID },

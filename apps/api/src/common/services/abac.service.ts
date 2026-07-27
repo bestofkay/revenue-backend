@@ -47,6 +47,19 @@ export class AbacService implements OnModuleInit {
       if (requestedAgencyId) return requestedAgencyId;
       if (user.agencyId) return user.agencyId;
       if (this.cachedTenantId) return this.cachedTenantId;
+      // Cache can be cold when the API booted before db:seed. Sync callers cannot
+      // await Prisma, so use the stable single-tenant id and refresh the cache.
+      void this.getTenantAgencyId().catch(() => undefined);
+      const configuredId = this.config.get<string>('TENANT_AGENCY_ID');
+      if (configuredId) {
+        this.cachedTenantId = configuredId;
+        return configuredId;
+      }
+      const code = this.config.get<string>('TENANT_AGENCY_CODE', 'NCS');
+      if (code === 'NCS') {
+        this.cachedTenantId = 'ncs-agency';
+        return this.cachedTenantId;
+      }
       throw new BadRequestException('Tenant agency not ready. Ensure db:seed has run.');
     }
     if (!user.agencyId) throw new ForbiddenException('User is not assigned to an agency');
