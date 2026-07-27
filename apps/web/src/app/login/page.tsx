@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -185,12 +186,12 @@ export default function LoginPage() {
                 {needs2fa ? 'Verify & sign in' : 'Sign in securely'}
               </Button>
               <p className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-center text-sm">
-                <a className="text-accent underline-offset-2 hover:underline" href="/forgot-password">
+                <Link className="text-accent underline-offset-2 hover:underline" href="/forgot-password">
                   Forgot password?
-                </a>
-                <a className="text-navy/60 underline-offset-2 hover:underline" href="/pay">
+                </Link>
+                <Link className="text-navy/60 underline-offset-2 hover:underline" href="/pay">
                   Public pay portal
-                </a>
+                </Link>
               </p>
             </form>
 
